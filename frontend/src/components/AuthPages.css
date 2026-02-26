@@ -1,0 +1,294 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   AuthPages.css — Login & Signup Pages
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+.auth-page {
+    width: 100vw;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8fafc;
+    font-family: 'Inter', sans-serif;
+    position: relative;
+    overflow: hidden;
+    padding: 24px;
+}
+
+.auth-page__bg-blob {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.auth-page__bg-blob--1 {
+    top: -5%;
+    right: -8%;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 70%);
+}
+
+.auth-page__bg-blob--2 {
+    bottom: -8%;
+    left: -5%;
+    width: 350px;
+    height: 350px;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.06) 0%, transparent 70%);
+}
+
+/* ── Auth Card ─────────────────────────────────────────────────────────── */
+.auth-card {
+    width: 100%;
+    max-width: 420px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 40px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+    position: relative;
+    z-index: 1;
+    animation: authFadeIn 0.4s ease;
+}
+
+.auth-card--signup {
+    max-width: 520px;
+}
+
+.auth-card__header {
+    text-align: center;
+    margin-bottom: 28px;
+}
+
+.auth-card__logo {
+    width: 48px;
+    height: 48px;
+    background: #111;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    margin: 0 auto 16px;
+}
+
+.auth-card__title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #111;
+    margin: 0 0 6px;
+}
+
+.auth-card__subtitle {
+    font-size: 14px;
+    color: #6b7280;
+    font-weight: 500;
+    margin: 0;
+}
+
+/* ── Error ─────────────────────────────────────────────────────────────── */
+.auth-card__error {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #dc2626;
+    margin-bottom: 20px;
+    animation: authShake 0.4s ease;
+}
+
+/* ── Form ──────────────────────────────────────────────────────────────── */
+.auth-card__form {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.auth-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+}
+
+.auth-field__label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+}
+
+.auth-field__input {
+    padding: 11px 14px;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    color: #111;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    background: #fff;
+}
+
+.auth-field__input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.auth-field__input::placeholder {
+    color: #9ca3af;
+}
+
+.auth-field__select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+}
+
+.auth-field__row {
+    display: flex;
+    gap: 14px;
+}
+
+/* ── Submit Button ─────────────────────────────────────────────────────── */
+.auth-card__submit {
+    padding: 12px;
+    border-radius: 8px;
+    background: #111;
+    color: #fff;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 46px;
+    margin-top: 4px;
+}
+
+.auth-card__submit:hover:not(:disabled) {
+    background: #333;
+}
+
+.auth-card__submit:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.auth-card__spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+}
+
+/* ── Footer ────────────────────────────────────────────────────────────── */
+.auth-card__footer-text {
+    text-align: center;
+    font-size: 13px;
+    color: #6b7280;
+    font-weight: 500;
+    margin-top: 24px;
+}
+
+.auth-card__link {
+    color: #3b82f6;
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.auth-card__link:hover {
+    color: #1d4ed8;
+}
+
+/* ── Animations ────────────────────────────────────────────────────────── */
+@keyframes authFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes authShake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    20% {
+        transform: translateX(-6px);
+    }
+
+    40% {
+        transform: translateX(6px);
+    }
+
+    60% {
+        transform: translateX(-4px);
+    }
+
+    80% {
+        transform: translateX(4px);
+    }
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ── Role Toggle ──────────────────────────────────────────────────────── */
+.auth-role-toggle {
+    display: flex;
+    gap: 10px;
+}
+
+.auth-role-toggle__btn {
+    flex: 1;
+    padding: 12px 14px;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    background: #fff;
+    color: #6b7280;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.auth-role-toggle__btn:hover {
+    border-color: #d1d5db;
+    background: #f9fafb;
+}
+
+.auth-role-toggle__btn--active {
+    border-color: #3b82f6;
+    background: #eff6ff;
+    color: #1d4ed8;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}

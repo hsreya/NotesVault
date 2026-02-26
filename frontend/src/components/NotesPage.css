@@ -1,0 +1,51 @@
+.notes-page {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: white;
+}
+
+.notes-canvas {
+  width: 1280px;
+  height: 832px;
+  position: relative;
+  background: white;
+  overflow: hidden;
+}
+
+.notes-loading {
+  width: 783px;
+  height: 275px;
+  left: 248px;
+  top: 277px;
+  position: absolute;
+  text-align: center;
+  color: #E2E2E2;
+  font-size: 64px;
+  font-family: 'Inter';
+  font-weight: 400;
+  word-wrap: break-word;
+  text-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
+  transform: translateX(-900px);
+  transition: color 0.2s ease;
+}
+
+.notes-loading--animating {
+  animation: notes-slide-in 2.2s ease-out forwards;
+}
+
+.notes-loading--done {
+  color: black;
+  transform: translateX(0);
+}
+
+@keyframes notes-slide-in {
+  0% {
+    transform: translateX(-900px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}

@@ -1,0 +1,37 @@
+.selection-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 0;
+  margin: 0;
+  caret-color: black;
+  font-family: 'Inter';
+}
+
+.selection-input::placeholder {
+  color: #E2E2E2;
+  opacity: 1;
+}
+
+.selection-canvas {
+  animation: selection-fade 180ms ease-in;
+}
+
+.selection-canvas--fade {
+  opacity: 0;
+  transition: opacity 180ms ease-in;
+}
+
+.selection-suggestions {
+  position: relative;
+  z-index: 2;
+}
+
+@keyframes selection-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
