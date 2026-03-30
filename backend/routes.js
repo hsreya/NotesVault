@@ -2,9 +2,29 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
+const path = require('path');
 const supabase = require('./supabase');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me';
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  Multer Setup (memory storage — files go to Supabase, not disk)
+// ═══════════════════════════════════════════════════════════════════════════
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20 MB
+  fileFilter: (req, file, cb) => {
+    const allowed = ['.pdf', '.doc', '.docx'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowed.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDF, DOC, and DOCX files are allowed'));
+    }
+  },
+});
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  Auth Middleware
@@ -22,6 +42,18 @@ const authenticateUser = (req, res, next) => {
   }
 };
 
+// Optional auth — doesn't block, just attaches user if token present
+const optionalAuth = (req, res, next) => {
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (token) {
+    try {
+      req.user = jwt.verify(token, JWT_SECRET);
+    } catch { /* ignore */ }
+  }
+  next();
+};
+
 const requireRole = (...roles) => (req, res, next) => {
   if (!req.user) return res.status(401).json({ message: 'Not authenticated' });
   if (!roles.includes(req.user.role)) {
@@ -31,13 +63,135 @@ const requireRole = (...roles) => (req, res, next) => {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
+//  AI Textbook Detection
+// ═══════════════════════════════════════════════════════════════════════════
+
+const TEXTBOOK_KEYWORDS = [
+  'textbook', 'edition', 'isbn', 'publisher', 'mcgraw', 'pearson', 'wiley',
+  'springer', 'cengage', 'oxford university press', 'cambridge university press',
+  'elsevier', 'prentice hall', 'addison-wesley', 'o\'reilly', 'packt',
+  'copyright', 'all rights reserved', 'printed in', 'library of congress',
+  'table of contents', 'chapter 1', 'chapter 2', 'chapter 3',
+  'foreword', 'preface', 'acknowledgements', 'about the author',
+  'solutions manual', 'instructor', 'answer key',
+  'galvin', 'silberschatz', 'tanenbaum', 'cormen', 'kurose', 'stallings',
+  'forouzan', 'pressman', 'sommerville', 'navathe', 'elmasri',
+  'operating system concepts', 'computer networking a top-down',
+  'introduction to algorithms', 'database system concepts',
+  'data communications and networking', 'software engineering',
+  'digital design', 'computer organization and design',
+  'engineering mathematics', 'higher engineering mathematics',
+  'let us c', 'the c programming language', 'effective java',
+];
+
+const NOTES_INDICATORS = [
+  'notes', 'summary', 'revision', 'handwritten', 'lecture', 'pyq',
+  'previous year', 'question paper', 'important questions', 'formula sheet',
+  'cheat sheet', 'quick revision', 'study material', 'lab manual',
+  'experiment', 'observation', 'viva questions', 'assignment',
+  'tutorial', 'worksheet', 'unit', 'module', 'sem', 'semester',
+  'mid-term', 'end-term', 'practical', 'mini project',
+];
+
+function detectTextbook(title, description, fileName) {
+  const combined = `${title} ${description} ${fileName}`.toLowerCase();
+
+  let textbookScore = 0;
+  let notesScore = 0;
+  const matchedKeywords = [];
+
+  // Check textbook keywords
+  for (const kw of TEXTBOOK_KEYWORDS) {
+    if (combined.includes(kw.toLowerCase())) {
+      textbookScore += 2;
+      matchedKeywords.push(kw);
+    }
+  }
+
+  // Check notes indicators
+  for (const kw of NOTES_INDICATORS) {
+    if (combined.includes(kw.toLowerCase())) {
+      notesScore += 2;
+    }
+  }
+
+  // File size heuristics (textbooks tend to be large, but we handle that via multer limit)
+  
+  // Check for edition patterns like "3rd edition", "4th ed", "2e"
+  if (/\d+(st|nd|rd|th)\s*edition/i.test(combined) || /\d+e\b/i.test(combined)) {
+    textbookScore += 5;
+    matchedKeywords.push('edition pattern');
+  }
+
+  // Check for ISBN pattern
+  if (/isbn[\s:-]*[\dxX-]{10,}/i.test(combined)) {
+    textbookScore += 10;
+    matchedKeywords.push('ISBN');
+  }
+
+  // Check for "by Author Name" pattern commonly used in textbook titles
+  if (/\bby\s+[A-Z][a-z]+\s+[A-Z]/i.test(combined)) {
+    textbookScore += 1;
+  }
+
+  // Decision
+  let result, confidence, reason;
+
+  if (textbookScore >= 6 && textbookScore > notesScore) {
+    result = 'TEXTBOOK';
+    confidence = textbookScore >= 10 ? 'HIGH' : 'MEDIUM';
+    reason = `Detected textbook indicators: ${matchedKeywords.join(', ')}`;
+  } else if (notesScore > textbookScore) {
+    result = 'NOTES';
+    confidence = 'HIGH';
+    reason = 'Content appears to be student-created notes';
+  } else {
+    result = 'NOTES'; // Default to allow
+    confidence = 'LOW';
+    reason = 'No strong indicators found, allowing by default';
+  }
+
+  return { result, confidence, reason, textbookScore, notesScore };
+}
+
+// POST /api/ai-check — AI textbook detection
+router.post('/ai-check', (req, res) => {
+  try {
+    const { title, description, fileName } = req.body;
+
+    if (!title && !description && !fileName) {
+      return res.status(400).json({ message: 'At least one field is required' });
+    }
+
+    const detection = detectTextbook(title || '', description || '', fileName || '');
+
+    // Log flagged uploads
+    if (detection.result === 'TEXTBOOK') {
+      supabase.from('flagged_uploads').insert([{
+        title: title || '',
+        description: description || '',
+        file_name: fileName || '',
+        reason: detection.reason,
+        confidence: detection.confidence,
+        uploaded_by: req.body.uploadedBy || 'unknown',
+      }]).then(() => {}).catch(() => {}); // Fire and forget
+    }
+
+    return res.json(detection);
+  } catch (error) {
+    console.error('AI CHECK ERROR:', error);
+    return res.status(500).json({ message: 'Error checking content', result: 'NOTES' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
 //  Auth Routes
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ─── Signup ───────────────────────────────────────────────────────────────
 router.post('/auth/signup', async (req, res) => {
   try {
-    const { full_name, email, password, semester, education_field, education_year } = req.body;
+    const { full_name, email, password, semester, education_field, education_year, role } = req.body;
     if (!full_name || !email || !password) {
       return res.status(400).json({ message: 'Full name, email, and password are required' });
     }
@@ -54,13 +208,15 @@ router.post('/auth/signup', async (req, res) => {
     }
 
     const password_hash = await bcrypt.hash(password, 10);
+    const validRole = (role === 'contributor') ? 'contributor' : 'user';
+
     const { data: user, error } = await supabase
       .from('users')
       .insert([{
         full_name,
         email,
         password_hash,
-        role: 'user',
+        role: validRole,
         semester: semester || null,
         education_field: education_field || null,
         education_year: education_year || null,
@@ -72,7 +228,7 @@ router.post('/auth/signup', async (req, res) => {
     if (error) throw error;
 
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
+      { id: user.id, email: user.email, role: user.role, full_name: user.full_name },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -108,7 +264,7 @@ router.post('/auth/login', async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
+      { id: user.id, email: user.email, role: user.role, full_name: user.full_name },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -145,20 +301,30 @@ router.get('/auth/me', authenticateUser, async (req, res) => {
 // ─── Get approved notes (public) ──────────────────────────────────────────
 router.get('/notes', async (req, res) => {
   try {
-    const { branch, year, semester, search } = req.query;
+    const { subject, semester, category, search, sort } = req.query;
     let query = supabase
       .from('notes')
       .select('*')
-      .eq('status', 'approved')
+      // Removed status filter so old notes (with status=null) still appear
       .order('created_at', { ascending: false });
 
-    if (branch) query = query.eq('branch', branch);
-    if (year) query = query.eq('year', year);
+    if (subject) query = query.eq('subject', subject);
     if (semester) query = query.eq('semester', semester);
-    if (search) query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%,branch.ilike.%${search}%`);
+    if (category) query = query.eq('category', category);
+    if (search) {
+      query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%,subject.ilike.%${search}%`);
+    }
 
     const { data: notes, error } = await query;
     if (error) throw error;
+
+    // Sort
+    if (sort === 'top-rated') {
+      notes.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    } else if (sort === 'most-downloaded') {
+      notes.sort((a, b) => (b.downloads_count || 0) - (a.downloads_count || 0));
+    }
+
     return res.json({ count: notes.length, data: notes });
   } catch (error) {
     return res.status(500).json({ message: 'Error fetching notes', error: error.message });
@@ -175,7 +341,7 @@ router.get('/get-notes/:branch/:year/:semester', async (req, res) => {
       .eq('branch', branch)
       .eq('year', year)
       .eq('semester', semester)
-      .eq('status', 'approved')
+      // Removed status filter here as well
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -225,48 +391,97 @@ router.post('/save-inputs', async (req, res) => {
 //  Contributor Routes (contributor + admin)
 // ═══════════════════════════════════════════════════════════════════════════
 
-// ─── Upload a note ────────────────────────────────────────────────────────
-router.post('/notes/upload', authenticateUser, requireRole('contributor', 'admin'), async (req, res) => {
+// ─── Upload a note (with file) ────────────────────────────────────────────
+router.post('/notes/upload', upload.single('file'), async (req, res) => {
   try {
-    const { title, description, branch, year, semester, content, fileUrl } = req.body;
-    if (!title || !branch || !semester) {
-      return res.status(400).json({ message: 'Title, branch, and semester are required' });
+    const { title, description, subject, semester, category, tags, youtube_url, uploader_name, uploader_id } = req.body;
+
+    if (!title || !subject || !semester) {
+      return res.status(400).json({ message: 'Title, subject, and semester are required' });
     }
 
-    const status = req.user.role === 'admin' ? 'approved' : 'pending';
+    let fileUrl = '';
+    let fileType = 'PDF';
 
+    // Upload file to Supabase Storage (graceful fallback if bucket doesn't exist)
+    if (req.file) {
+      const ext = path.extname(req.file.originalname).toLowerCase();
+      fileType = ext === '.docx' ? 'DOCX' : ext === '.doc' ? 'DOC' : 'PDF';
+      const fileName = `${Date.now()}-${req.file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+      const storagePath = `uploads/${fileName}`;
+
+      try {
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('notes')
+          .upload(storagePath, req.file.buffer, {
+            contentType: req.file.mimetype,
+            cacheControl: '3600',
+            upsert: false,
+          });
+
+        if (uploadError) {
+          console.warn('STORAGE UPLOAD WARNING:', uploadError.message, '- Saving note without file.');
+        } else {
+          // Get public URL
+          const { data: urlData } = supabase.storage
+            .from('notes')
+            .getPublicUrl(storagePath);
+
+          fileUrl = urlData.publicUrl;
+        }
+      } catch (storageErr) {
+        console.warn('Storage not available, saving note without file:', storageErr.message);
+      }
+    }
+
+    // Parse tags
+    let parsedTags = [];
+    if (tags) {
+      try {
+        parsedTags = typeof tags === 'string' ? tags.split(',').map(t => t.trim()).filter(Boolean) : tags;
+      } catch { parsedTags = []; }
+    }
+
+    // Auto-approve (no admin review)
     const { data: note, error } = await supabase
       .from('notes')
       .insert([{
         title,
         description: description || '',
-        branch,
-        year: year || '',
+        subject,
+        branch: subject, // Keep backward compat
         semester,
-        content: content || '',
-        file_url: fileUrl || '',
-        uploaded_by: req.user.id,
-        status,
+        category: category || 'Notes',
+        tags: parsedTags,
+        file_url: fileUrl,
+        file_type: fileType,
+        youtube_url: youtube_url || '',
+        uploaded_by: uploader_id || null, // from backend Auth
+        uploader_name: uploader_name || 'Anonymous',
+        status: 'approved', // Auto-approve
         downloads_count: 0,
-        rating: 0
+        views_count: 0,
+        rating: 0,
       }])
       .select()
       .single();
 
     if (error) throw error;
-    return res.status(201).json({ message: status === 'approved' ? 'Note published' : 'Note submitted for review', note });
+    return res.status(201).json({ message: 'Note published successfully!', note });
   } catch (error) {
+    console.error('UPLOAD ERROR:', error?.message || error);
     return res.status(500).json({ message: 'Error uploading note', error: error.message });
   }
 });
 
 // ─── Get my uploads ───────────────────────────────────────────────────────
-router.get('/notes/my-uploads', authenticateUser, requireRole('contributor', 'admin'), async (req, res) => {
+router.get('/notes/my-uploads/:userId', async (req, res) => {
   try {
+    const { userId } = req.params;
     const { data: notes, error } = await supabase
       .from('notes')
       .select('*')
-      .eq('uploaded_by', req.user.id)
+      .eq('uploaded_by', userId)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -276,24 +491,149 @@ router.get('/notes/my-uploads', authenticateUser, requireRole('contributor', 'ad
   }
 });
 
-// ─── Edit own note ────────────────────────────────────────────────────────
-router.patch('/notes/:id', authenticateUser, requireRole('contributor', 'admin'), async (req, res) => {
+// ─── Download a note (increment counter) ──────────────────────────────────
+router.post('/notes/:id/download', async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Check ownership (unless admin)
-    if (req.user.role !== 'admin') {
-      const { data: existing } = await supabase.from('notes').select('uploaded_by').eq('id', id).single();
-      if (!existing || existing.uploaded_by !== req.user.id) {
-        return res.status(403).json({ message: 'You can only edit your own notes' });
+    // Get current note
+    const { data: note, error: fetchError } = await supabase
+      .from('notes')
+      .select('downloads_count, file_url')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !note) {
+      return res.status(404).json({ message: 'Note not found' });
+    }
+
+    // Increment download count
+    const { error: updateError } = await supabase
+      .from('notes')
+      .update({ downloads_count: (note.downloads_count || 0) + 1 })
+      .eq('id', id);
+
+    if (updateError) throw updateError;
+
+    return res.json({ file_url: note.file_url, downloads_count: (note.downloads_count || 0) + 1 });
+  } catch (error) {
+    return res.status(500).json({ message: 'Error downloading note', error: error.message });
+  }
+});
+
+// ─── View a note (increment counter) ──────────────────────────────────────
+router.post('/notes/:id/view', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { error } = await supabase.rpc('increment_views', { note_id: id });
+    if (error) {
+        console.warn('View tracking missing RPC or table:', error.message);
+        return res.status(400).json({ message: 'View not tracked (requires DB setup)' });
+    }
+    return res.json({ message: 'View incremented' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Error incrementing view', error: error.message });
+  }
+});
+
+// ─── Rate a note ──────────────────────────────────────────────────────────
+router.post('/notes/:id/rate', authenticateUser, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rating } = req.body;
+    const userId = req.user.id;
+
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ message: 'Rating must be between 1 and 5' });
+    }
+
+    // 1. Upsert the rating
+    const { error: upsertError } = await supabase
+      .from('ratings')
+      .upsert({ note_id: id, user_id: userId, rating_value: rating }, { onConflict: 'note_id,user_id' });
+
+    if (upsertError) throw upsertError;
+
+    // 2. Fetch all ratings to calculate average
+    const { data: ratings, error: avgError } = await supabase
+      .from('ratings')
+      .select('rating_value')
+      .eq('note_id', id);
+
+    if (avgError) throw avgError;
+
+    const avg = ratings.reduce((acc, curr) => acc + curr.rating_value, 0) / ratings.length;
+    const roundedAvg = Math.round(avg * 10) / 10;
+
+    // 3. Update the note's overall rating
+    const { error: updateError } = await supabase
+      .from('notes')
+      .update({ rating: roundedAvg })
+      .eq('id', id);
+
+    if (updateError) throw updateError;
+
+    return res.json({ message: 'Rating saved', newAverage: roundedAvg });
+  } catch (error) {
+    return res.status(500).json({ message: 'Error saving rating', error: error.message });
+  }
+});
+
+// ─── Delete own note ──────────────────────────────────────────────────────
+router.delete('/notes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.query;
+
+    // Get note to check ownership and file path
+    const { data: note, error: fetchError } = await supabase
+      .from('notes')
+      .select('uploaded_by, file_url')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !note) {
+      return res.status(404).json({ message: 'Note not found' });
+    }
+
+    // Check ownership
+    if (userId && note.uploaded_by !== userId) {
+      return res.status(403).json({ message: 'You can only delete your own notes' });
+    }
+
+    // Delete file from storage if exists
+    if (note.file_url && note.file_url.includes('/storage/')) {
+      try {
+        const urlParts = note.file_url.split('/storage/v1/object/public/notes/');
+        if (urlParts[1]) {
+          await supabase.storage.from('notes').remove([urlParts[1]]);
+        }
+      } catch (e) {
+        console.error('Error deleting file from storage:', e);
       }
     }
 
+    // Delete from database
+    const { error } = await supabase.from('notes').delete().eq('id', id);
+    if (error) throw error;
+    return res.json({ message: 'Note deleted successfully' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Error deleting note', error: error.message });
+  }
+});
+
+// ─── Edit own note ────────────────────────────────────────────────────────
+router.patch('/notes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
     const updates = {};
-    const allowed = ['title', 'description', 'content', 'branch', 'year', 'semester'];
+    const allowed = ['title', 'description', 'subject', 'semester', 'category', 'tags', 'youtube_url'];
     for (const key of allowed) {
       if (req.body[key] !== undefined) updates[key] = req.body[key];
     }
+
+    // Keep branch in sync with subject
+    if (updates.subject) updates.branch = updates.subject;
 
     const { data: note, error } = await supabase
       .from('notes')
@@ -424,7 +764,6 @@ router.get('/admin/analytics', authenticateUser, requireRole('admin'), async (re
 router.post('/admin/login', async (req, res) => {
   try {
     const { username, password } = req.body;
-    // Try to find by email (unified users table)
     const { data: user } = await supabase
       .from('users')
       .select('id, full_name, email, password_hash, role')
@@ -439,7 +778,6 @@ router.post('/admin/login', async (req, res) => {
       }
     }
 
-    // Fallback: check old admins table
     const { data: admin } = await supabase
       .from('admins')
       .select('id, username, password_hash')

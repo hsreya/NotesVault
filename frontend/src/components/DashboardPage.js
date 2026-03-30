@@ -3,83 +3,33 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import './DashboardPage.css';
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
+// ─── Constants ────────────────────────────────────────────────────────────────
 const MOCK_SUBJECTS = ['DBMS', 'OS', 'CN', 'DSA', 'Web Dev', 'AI/ML', 'Math', 'Physics'];
 const MOCK_TAGS = ['Summary', 'PYQ', 'Handwritten', 'Revision', 'Lab Manual', 'Detailed'];
-const MOCK_UPLOADERS = ['Aarav S.', 'Priya K.', 'Rahul M.', 'Sneha D.', 'Vikram P.', 'Ananya R.'];
 const FILE_TYPES = ['PDF', 'DOCX'];
 const SEMESTERS = ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6', 'Sem 7', 'Sem 8'];
 const EDUCATION_FIELDS = ['Computer Engineering', 'IT', 'EXTC', 'Mechanical', 'Civil'];
 const NOTE_TYPES = ['Summary', 'Detailed', 'PYQ', 'Lab Manual'];
 const SORT_OPTIONS = [
-  { value: 'relevant', label: 'Most Relevant' },
+  { value: 'relevant', label: 'Best Suited (Hybrid)' },
   { value: 'top-rated', label: 'Top Rated' },
-  { value: 'most-downloaded', label: 'Most Downloaded' },
+  { value: 'most-downloaded', label: 'Trending' },
   { value: 'newest', label: 'Newest First' },
   { value: 'oldest', label: 'Oldest First' },
 ];
 
-const enrichNote = (note, index) => {
-  const seed = index + 1;
-  return {
-    ...note,
-    id: note._id || note.id || `note-${index}`,
-    subject: note.branch || MOCK_SUBJECTS[seed % MOCK_SUBJECTS.length],
-    description: note.content
-      ? note.content.slice(0, 80) + (note.content.length > 80 ? '…' : '')
-      : 'Comprehensive study material covering key concepts and exam-relevant topics.',
-    rating: +(3.5 + (seed % 15) * 0.1).toFixed(1),
-    views: 120 + seed * 47,
-    downloads: 30 + seed * 13,
-    fileType: note.file_url?.includes('.docx') ? 'DOCX' : 'PDF',
-    uploadDate: note.created_at
-      ? new Date(note.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-      : `${seed} Feb 2026`,
-    uploadedBy: MOCK_UPLOADERS[seed % MOCK_UPLOADERS.length],
-    tags: [MOCK_TAGS[seed % MOCK_TAGS.length], MOCK_TAGS[(seed + 2) % MOCK_TAGS.length]],
-    semester: note.semester || SEMESTERS[seed % SEMESTERS.length],
-    educationField: note.branch || EDUCATION_FIELDS[seed % EDUCATION_FIELDS.length],
-  };
-};
-
-const generateMockNotes = () =>
-  Array.from({ length: 9 }, (_, i) => enrichNote({
-    title: [
-      'DBMS Complete Notes', 'OS Handwritten Summary', 'CN PYQ Solutions',
-      'DSA Key Concepts', 'Web Dev React Guide', 'AI/ML Revision Notes',
-      'Math III Formula Sheet', 'Physics Lab Manual', 'Digital Logic Design'
-    ][i],
-    content: [
-      'Complete database management system notes covering normalization, SQL, transactions, and concurrency control.',
-      'Handwritten operating system notes with process scheduling, memory management, and file systems.',
-      'Previous year question papers for computer networks with detailed solutions and explanations.',
-      'Data structures and algorithms covering arrays, trees, graphs, sorting, and dynamic programming.',
-      'React.js comprehensive guide with hooks, state management, routing, and project structure.',
-      'Artificial intelligence and machine learning revision notes for semester exams.',
-      'Complete formula sheet for Engineering Mathematics III with examples.',
-      'Physics laboratory manual with experiment procedures and observations.',
-      'Digital logic design notes covering Boolean algebra, K-maps, and sequential circuits.'
-    ][i],
-    branch: MOCK_SUBJECTS[i % MOCK_SUBJECTS.length],
-    semester: SEMESTERS[i % SEMESTERS.length],
-  }, i));
-
-// ─── Search Suggestions Data ────────────────────────────────────────────────
 const SEARCH_DATA = [
   { text: 'DBMS Summary Notes', type: 'Notes' },
   { text: 'DBMS PYQ Sem 4', type: 'PYQ' },
-  { text: 'DBMS Important Questions', type: 'Questions' },
   { text: 'Operating System Handwritten', type: 'Notes' },
-  { text: 'OS Process Scheduling', type: 'Topic' },
   { text: 'Computer Networks Unit 1', type: 'Notes' },
-  { text: 'CN PYQ Solutions', type: 'PYQ' },
   { text: 'DSA Trees & Graphs', type: 'Topic' },
   { text: 'React.js Complete Guide', type: 'Notes' },
   { text: 'AI/ML Revision Sheet', type: 'Revision' },
   { text: 'Math III Formulas', type: 'Notes' },
-  { text: 'Digital Logic PYQ', type: 'PYQ' },
   { text: 'Web Development Lab Manual', type: 'Lab' },
-  { text: 'Physics Experiment Notes', type: 'Lab' },
 ];
 
 // ─── SVG Icons ───────────────────────────────────────────────────────────────
@@ -95,8 +45,18 @@ const ChevronDown = ({ className }) => (
   </svg>
 );
 
-const StarIcon = ({ className, filled }) => (
-  <svg className={className} viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
+const StarIcon = ({ className, filled, onClick, onMouseEnter, onMouseLeave }) => (
+  <svg 
+    className={className} 
+    viewBox="0 0 24 24" 
+    fill={filled ? 'currentColor' : 'none'} 
+    stroke="currentColor" 
+    strokeWidth="2"
+    onClick={onClick}
+    onMouseEnter={onMouseEnter}
+    onMouseLeave={onMouseLeave}
+    style={{ cursor: onClick ? 'pointer' : 'inherit' }}
+  >
     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
   </svg>
 );
@@ -119,8 +79,8 @@ const BookmarkIcon = ({ className, filled }) => (
   </svg>
 );
 
-const UserIcon = ({ className }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+const UserIcon = ({ className, style }) => (
+  <svg className={className} style={style} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
   </svg>
 );
@@ -152,7 +112,7 @@ const SortIcon = ({ className }) => (
 const EmptyIcon = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
-    <line x1="9" x2="15" y1="13" y2="13" /><line x1="12" x2="12" y1="10" y2="16" style={{ opacity: 0.3 }} />
+    <line x1="9" x2="15" y1="13" y2="13" />
   </svg>
 );
 
@@ -184,9 +144,22 @@ const FireIcon = () => (
   <span role="img" aria-label="trending" style={{ fontSize: 20 }}>🔥</span>
 );
 
+const VideoIcon = ({ className }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M23 7l-7 5 7 5V7z" />
+    <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+  </svg>
+);
+
+const CloseIcon = ({ className, onClick }) => (
+    <svg className={className} onClick={onClick} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ cursor: 'pointer' }}>
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+    </svg>
+);
+
 // ─── Sub-Components ──────────────────────────────────────────────────────────
 
-// Filter Section (collapsible)
 const FilterSection = ({ title, children, defaultOpen = false }) => {
   const [open, setOpen] = useState(defaultOpen);
   return (
@@ -202,7 +175,6 @@ const FilterSection = ({ title, children, defaultOpen = false }) => {
   );
 };
 
-// Filter checkbox item
 const FilterItem = ({ label, checked, onChange }) => (
   <label className="filter-item">
     <span className={`filter-item__checkbox ${checked ? 'filter-item__checkbox--checked' : ''}`}>
@@ -214,11 +186,14 @@ const FilterItem = ({ label, checked, onChange }) => (
 );
 
 // Note Card
-const NoteCard = ({ note, bookmarked, onToggleBookmark, isTrending }) => (
+const NoteCard = ({ note, bookmarked, onToggleBookmark, isTrending, onDownload, onPreview }) => (
   <div className="note-card">
     <div className="note-card__header">
-      <div style={{ display: 'flex', alignItems: 'center' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
         <span className="note-card__subject">{note.subject}</span>
+        {note.category && note.category !== 'Notes' && (
+          <span className="note-card__category-badge">{note.category}</span>
+        )}
         {isTrending && (
           <span className="note-card__trending-badge">
             <FireIcon /> Trending
@@ -227,20 +202,22 @@ const NoteCard = ({ note, bookmarked, onToggleBookmark, isTrending }) => (
       </div>
       <button
         className={`note-card__bookmark ${bookmarked ? 'note-card__bookmark--active' : ''}`}
-        onClick={() => onToggleBookmark(note.id)}
+        onClick={(e) => { e.stopPropagation(); onToggleBookmark(note.id); }}
         title={bookmarked ? 'Remove bookmark' : 'Bookmark this note'}
       >
         <BookmarkIcon className="note-card__bookmark-icon" filled={bookmarked} />
       </button>
     </div>
 
-    <h3 className="note-card__title">{note.title || 'Study Notes'}</h3>
+    <h3 className="note-card__title" onClick={() => onPreview(note)} style={{ cursor: 'pointer' }}>
+      {note.title || 'Study Notes'}
+    </h3>
     <p className="note-card__desc">{note.description}</p>
 
     <div className="note-card__meta">
       <span className="note-card__meta-item">
         <StarIcon className="note-card__meta-icon note-card__star-icon" filled />
-        {note.rating}
+        {note.rating || '0'}
       </span>
       <span className="note-card__meta-item">
         <EyeIcon className="note-card__meta-icon" />
@@ -250,13 +227,13 @@ const NoteCard = ({ note, bookmarked, onToggleBookmark, isTrending }) => (
         <DownloadIcon className="note-card__meta-icon" />
         {note.downloads}
       </span>
-      <span className={`note-card__file-badge note-card__file-badge--${note.fileType.toLowerCase()}`}>
-        {note.fileType}
+      <span className={`note-card__file-badge note-card__file-badge--${(note.fileType || 'pdf').toLowerCase()}`}>
+        {note.fileType || 'PDF'}
       </span>
     </div>
 
     <div className="note-card__tags">
-      {note.tags.map(tag => (
+      {(note.tags || []).map(tag => (
         <span key={tag} className="note-card__tag">{tag}</span>
       ))}
     </div>
@@ -267,14 +244,140 @@ const NoteCard = ({ note, bookmarked, onToggleBookmark, isTrending }) => (
         {note.uploadedBy} &middot; <CalendarIcon className="note-card__uploader-icon" /> {note.uploadDate}
       </div>
       <div className="note-card__actions">
-        <button className="note-card__action-btn">Preview</button>
-        <button className="note-card__action-btn note-card__action-btn--primary">
+        <button className="note-card__action-btn" onClick={() => onPreview(note)}>Preview</button>
+        <button className="note-card__action-btn note-card__action-btn--primary" onClick={(e) => {
+            e.stopPropagation();
+            onDownload(note);
+        }}>
           Download
         </button>
       </div>
     </div>
   </div>
 );
+
+// Preview Modal Component
+const PreviewModal = ({ isOpen, onClose, note, onDownload, onOpenPdf, onRate, userToken }) => {
+    const [hoverRating, setHoverRating] = useState(0);
+    const [ratingLoading, setRatingLoading] = useState(false);
+
+    if (!isOpen || !note) return null;
+
+    const handleBackdropClick = (e) => {
+        if (e.target.classList.contains('preview-modal-overlay')) {
+            onClose();
+        }
+    };
+
+    const extractYoutubeId = (url) => {
+        if (!url) return null;
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+        const match = url.match(regExp);
+        return (match && match[2].length === 11) ? match[2] : null;
+    };
+
+    const videoId = extractYoutubeId(note.youtube_url);
+    const hasVideo = !!videoId;
+
+    const handleRate = async (val) => {
+        if (!userToken) return alert('You must be logged in to rate notes.');
+        setRatingLoading(true);
+        await onRate(note.id, val);
+        setRatingLoading(false);
+    };
+
+    return (
+        <div className="preview-modal-overlay" onClick={handleBackdropClick}>
+            <div className={`preview-modal ${hasVideo ? 'preview-modal--wide' : ''}`}>
+                <div className="preview-modal__header">
+                    <span className="note-card__subject">{note.subject}</span>
+                    <CloseIcon className="preview-modal__close" onClick={onClose} />
+                </div>
+                
+                <h2 className="preview-modal__title">{note.title || 'Study Notes'}</h2>
+                
+                <div className="preview-modal__content-grid">
+                  <div className="preview-modal__main-col">
+                      <p className="preview-modal__desc">{note.description || 'No detailed description available.'}</p>
+                      
+                      <div className="preview-modal__meta-strip">
+                          <div className="preview-modal__meta-box">
+                              <StarIcon className="note-card__star-icon" filled />
+                              <div><strong>{note.rating || '0'}</strong> / 5.0 Rating</div>
+                          </div>
+                          <div className="preview-modal__meta-box">
+                              <EyeIcon className="note-card__meta-icon" />
+                              <div><strong>{note.views}</strong> Views</div>
+                          </div>
+                          <div className="preview-modal__meta-box">
+                              <DownloadIcon className="note-card__meta-icon" />
+                              <div><strong>{note.downloads}</strong> Downloads</div>
+                          </div>
+                      </div>
+
+                      <div className="preview-modal__tags-wrap">
+                          <strong>Tags:</strong>
+                          <div className="note-card__tags">
+                              {(note.tags || []).map(tag => (
+                                  <span key={tag} className="note-card__tag">{tag}</span>
+                              ))}
+                          </div>
+                      </div>
+
+                      <div className="preview-modal__rating-section">
+                          <strong>Rate this note:</strong>
+                          <div className={`preview-modal__stars ${ratingLoading ? 'loading' : ''}`}>
+                              {[1, 2, 3, 4, 5].map(star => (
+                                  <StarIcon 
+                                      key={star}
+                                      className="note-card__star-icon"
+                                      filled={star <= (hoverRating || note.rating || 0)}
+                                      onMouseEnter={() => setHoverRating(star)}
+                                      onMouseLeave={() => setHoverRating(0)}
+                                      onClick={() => handleRate(star)}
+                                  />
+                              ))}
+                          </div>
+                      </div>
+
+                      <div className="preview-modal__uploader-info">
+                          <div className="preview-modal__uploader-avatar">
+                              <UserIcon className="note-card__uploader-icon" />
+                          </div>
+                          <div>
+                              <div className="preview-modal__uploader-name">{note.uploadedBy}</div>
+                              <div className="preview-modal__uploader-date">Uploaded on {note.uploadDate}</div>
+                          </div>
+                      </div>
+
+                      <div className="preview-modal__actions">
+                          <button className="preview-modal__btn preview-modal__btn--primary" onClick={() => onOpenPdf(note)}>
+                              Open {note.fileType || 'PDF'}
+                          </button>
+                          <button className="preview-modal__btn" onClick={() => onDownload(note)}>
+                              <DownloadIcon className="note-card__meta-icon" style={{width: 18, height: 18}}/> Download Note
+                          </button>
+                      </div>
+                  </div>
+
+                  {hasVideo && (
+                      <div className="preview-modal__video-col">
+                          <strong><VideoIcon className="note-card__meta-icon" /> Video Explanation</strong>
+                          <iframe
+                              className="preview-modal__iframe"
+                              src={`https://www.youtube.com/embed/${videoId}`}
+                              title="YouTube video player"
+                              frameBorder="0"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                          ></iframe>
+                      </div>
+                  )}
+                </div>
+            </div>
+        </div>
+    );
+};
 
 // Skeleton Card
 const SkeletonCard = () => (
@@ -288,7 +391,6 @@ const SkeletonCard = () => (
   </div>
 );
 
-// Empty State
 const EmptyState = ({ onReset }) => (
   <div className="empty-state">
     <EmptyIcon className="empty-state__icon" />
@@ -302,7 +404,6 @@ const EmptyState = ({ onReset }) => (
   </div>
 );
 
-// Sort Dropdown
 const SortDropdown = ({ value, onChange }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -338,7 +439,7 @@ const SortDropdown = ({ value, onChange }) => {
   );
 };
 
-// Search Bar with autocomplete
+// Search Bar
 const SearchBar = ({ value, onChange }) => {
   const [focused, setFocused] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -360,27 +461,16 @@ const SearchBar = ({ value, onChange }) => {
 
   const handleKeyDown = (e) => {
     if (!showSuggestions) return;
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setActiveIndex(i => Math.min(i + 1, suggestions.length - 1));
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setActiveIndex(i => Math.max(i - 1, 0));
-    } else if (e.key === 'Enter' && activeIndex >= 0) {
-      e.preventDefault();
-      onChange(suggestions[activeIndex].text);
-      setFocused(false);
-    } else if (e.key === 'Escape') {
-      setFocused(false);
-    }
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIndex(i => Math.min(i + 1, suggestions.length - 1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIndex(i => Math.max(i - 1, 0)); }
+    else if (e.key === 'Enter' && activeIndex >= 0) { e.preventDefault(); onChange(suggestions[activeIndex].text); setFocused(false); }
+    else if (e.key === 'Escape') { setFocused(false); }
   };
 
   const highlightMatch = (text) => {
     const idx = text.toLowerCase().indexOf(value.toLowerCase());
     if (idx === -1) return text;
-    return (
-      <>{text.slice(0, idx)}<mark>{text.slice(idx, idx + value.length)}</mark>{text.slice(idx + value.length)}</>
-    );
+    return <>{text.slice(0, idx)}<mark>{text.slice(idx, idx + value.length)}</mark>{text.slice(idx + value.length)}</>;
   };
 
   return (
@@ -418,7 +508,7 @@ const SearchBar = ({ value, onChange }) => {
   );
 };
 
-// Profile Widget (auth-aware)
+// Profile Widget
 const ProfileWidget = ({ user, isAuthenticated, onLogout, onLogin, navigate }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -468,9 +558,6 @@ const ProfileWidget = ({ user, isAuthenticated, onLogout, onLogin, navigate }) =
           <button className="profile-widget__dropdown-item">
             <BookmarkIcon className="profile-widget__dropdown-icon" filled={false} /> Saved Notes
           </button>
-          <button className="profile-widget__dropdown-item">
-            <SettingsIcon className="profile-widget__dropdown-icon" /> Profile Settings
-          </button>
           <div className="profile-widget__dropdown-divider" />
           <button className="profile-widget__dropdown-item profile-widget__dropdown-item--danger" onClick={() => { onLogout(); setOpen(false); }}>
             <LogoutIcon className="profile-widget__dropdown-icon" /> Logout
@@ -481,27 +568,109 @@ const ProfileWidget = ({ user, isAuthenticated, onLogout, onLogin, navigate }) =
   );
 };
 
+// ─── Helper: normalize API note to card format ───────────────────────────────
+const calculateHybridScore = (note) => {
+    const avgRating = note.rating || 0;
+    const downloads = note.downloads_count || 0;
+    const views = note.views_count || 0;
+    // finalScore = (avgRating * 0.6) + (Math.log(downloads + 1) * 0.25) + (Math.log(views + 1) * 0.15)
+    return (avgRating * 0.6) + (Math.log(downloads + 1) * 0.25) + (Math.log(views + 1) * 0.15);
+};
+
+const normalizeNote = (note, index) => {
+  const seed = index + 1;
+  const rating = note.rating || +(3.5 + (seed % 15) * 0.1).toFixed(1);
+  const views = note.views_count || 120 + seed * 47;
+  const downloads = note.downloads_count || 30 + seed * 13;
+
+  return {
+    ...note,
+    id: note.id || `note-${index}`,
+    subject: note.subject || note.branch || MOCK_SUBJECTS[seed % MOCK_SUBJECTS.length],
+    description: note.description || 'Comprehensive study material covering key concepts and exam-relevant topics.',
+    rating: rating,
+    views: views,
+    downloads: downloads,
+    fileType: note.file_type || (note.file_url?.includes('.docx') ? 'DOCX' : 'PDF'),
+    uploadDate: note.created_at
+      ? new Date(note.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+      : `${seed} Feb 2026`,
+    uploadedBy: note.uploader_name || 'Anonymous',
+    tags: note.tags || [MOCK_TAGS[seed % MOCK_TAGS.length]],
+    semester: note.semester || SEMESTERS[seed % SEMESTERS.length],
+    educationField: note.branch || EDUCATION_FIELDS[seed % EDUCATION_FIELDS.length],
+    category: note.category || 'Notes',
+    file_url: note.file_url || '',
+    youtube_url: note.youtube_url || '',
+    finalScore: (rating * 0.6) + (Math.log(downloads + 1) * 0.25) + (Math.log(views + 1) * 0.15) // Hybrid score
+  };
+};
+
+const generateMockNotes = () =>
+  Array.from({ length: 9 }, (_, i) => normalizeNote({
+    title: [
+      'DBMS Complete Notes', 'OS Handwritten Summary', 'CN PYQ Solutions',
+      'DSA Key Concepts', 'Web Dev React Guide', 'AI/ML Revision Notes',
+      'Math III Formula Sheet', 'Physics Lab Manual', 'Digital Logic Design'
+    ][i],
+    description: [
+      'Complete database management system notes covering normalization, SQL, transactions, and concurrency control.',
+      'Handwritten operating system notes with process scheduling, memory management, and file systems.',
+      'Previous year question papers for computer networks with detailed solutions and explanations.',
+      'Data structures and algorithms covering arrays, trees, graphs, sorting, and dynamic programming.',
+      'React.js comprehensive guide with hooks, state management, routing, and project structure.',
+      'Artificial intelligence and machine learning revision notes for semester exams.',
+      'Complete formula sheet for Engineering Mathematics III with examples.',
+      'Physics laboratory manual with experiment procedures and observations.',
+      'Digital logic design notes covering Boolean algebra, K-maps, and sequential circuits.'
+    ][i],
+    subject: MOCK_SUBJECTS[i % MOCK_SUBJECTS.length],
+    semester: SEMESTERS[i % SEMESTERS.length],
+    category: ['Notes', 'PYQ', 'Revision', 'Notes', 'Notes', 'Revision', 'Summary', 'Lab Manual', 'Notes'][i],
+  }, i));
+
 // ─── Main Dashboard ──────────────────────────────────────────────────────────
-const DashboardPage = ({ notes, inputs, onRefresh, isLoading, error }) => {
-  const { user, isAuthenticated, logout } = useAuth();
+const DashboardPage = ({ inputs }) => {
+  const { user, isAuthenticated, logout, token } = useAuth();
   const navigate = useNavigate();
   const [bookmarks, setBookmarks] = useState(() => {
     try { return JSON.parse(localStorage.getItem('noteBookmarks')) || []; } catch { return []; }
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('relevant');
+  const [isLoading, setIsLoading] = useState(true);
+  const [apiNotes, setApiNotes] = useState(null);
   const [filters, setFilters] = useState({
-    subjects: [],
-    semesters: [],
-    educationFields: [],
-    fileTypes: [],
-    noteTypes: [],
-    ratingAbove4: false,
-    mostDownloaded: false,
-    recentlyAdded: false,
+    subjects: [], semesters: [], educationFields: [], fileTypes: [],
+    noteTypes: [], ratingAbove4: false, mostDownloaded: false, recentlyAdded: false,
   });
+  
+  // Preview Modal State
+  const [previewNote, setPreviewNote] = useState(null);
 
-  // Save bookmarks to localStorage
+  // Fetch notes from API
+  useEffect(() => {
+    const fetchNotes = async () => {
+      setIsLoading(true);
+      try {
+        const res = await fetch(`${API_URL}/api/notes`);
+        if (res.ok) {
+          const data = await res.json();
+          setApiNotes(data.data || []);
+        } else {
+          setApiNotes([]);
+        }
+      } catch (err) {
+        console.error('Error fetching notes:', err);
+        setApiNotes([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchNotes();
+  }, []);
+
+  // Save bookmarks
   useEffect(() => {
     localStorage.setItem('noteBookmarks', JSON.stringify(bookmarks));
   }, [bookmarks]);
@@ -510,19 +679,18 @@ const DashboardPage = ({ notes, inputs, onRefresh, isLoading, error }) => {
     setBookmarks(prev => prev.includes(id) ? prev.filter(b => b !== id) : [...prev, id]);
   }, []);
 
-  // ─── Enrich notes with mock data ────────────────────────────────────────
+  // Normalize notes — use API data if available, else mock
   const allNotes = useMemo(() => {
-    const raw = Array.isArray(notes) && notes.length > 0
-      ? notes.map((n, i) => enrichNote(n, i))
-      : generateMockNotes();
-    return raw;
-  }, [notes]);
+    if (apiNotes !== null) {
+      return apiNotes.map((n, i) => normalizeNote(n, i));
+    }
+    return []; // Wait until API finishes loading
+  }, [apiNotes]);
 
-  // ─── Filter notes ──────────────────────────────────────────────────────
+  // Filter notes
   const filteredNotes = useMemo(() => {
     let result = [...allNotes];
 
-    // Text search
     if (searchQuery.length >= 2) {
       const q = searchQuery.toLowerCase();
       result = result.filter(n =>
@@ -533,7 +701,6 @@ const DashboardPage = ({ notes, inputs, onRefresh, isLoading, error }) => {
       );
     }
 
-    // Filters
     if (filters.subjects.length) result = result.filter(n => filters.subjects.includes(n.subject));
     if (filters.semesters.length) result = result.filter(n => filters.semesters.includes(n.semester));
     if (filters.educationFields.length) result = result.filter(n => filters.educationFields.includes(n.educationField));
@@ -543,32 +710,32 @@ const DashboardPage = ({ notes, inputs, onRefresh, isLoading, error }) => {
     if (filters.mostDownloaded) result = result.sort((a, b) => b.downloads - a.downloads);
     if (filters.recentlyAdded) result = result.slice(0, 6);
 
-    // Sort
     switch (sortBy) {
+      case 'relevant': result.sort((a, b) => b.finalScore - a.finalScore); break; // Hybrid sorting
       case 'top-rated': result.sort((a, b) => b.rating - a.rating); break;
       case 'most-downloaded': result.sort((a, b) => b.downloads - a.downloads); break;
-      case 'newest': result.sort((a, b) => b.views - a.views); break;
-      case 'oldest': result.sort((a, b) => a.views - b.views); break;
+      case 'newest': result.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)); break;
+      case 'oldest': result.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0)); break;
       default: break;
     }
 
     return result;
   }, [allNotes, searchQuery, filters, sortBy]);
 
-  // Trending notes (top 5 by downloads)
   const trendingNotes = useMemo(() =>
     [...allNotes].sort((a, b) => b.downloads - a.downloads).slice(0, 5),
     [allNotes]
   );
+  
+  const topRatedNotes = useMemo(() =>
+    [...allNotes].sort((a, b) => b.rating - a.rating).slice(0, 6),
+    [allNotes]
+  );
 
-  // ─── Toggle filter helpers ──────────────────────────────────────────────
   const toggleFilter = (category, value) => {
     setFilters(prev => {
       const arr = prev[category];
-      return {
-        ...prev,
-        [category]: arr.includes(value) ? arr.filter(v => v !== value) : [...arr, value],
-      };
+      return { ...prev, [category]: arr.includes(value) ? arr.filter(v => v !== value) : [...arr, value] };
     });
   };
 
@@ -587,7 +754,66 @@ const DashboardPage = ({ notes, inputs, onRefresh, isLoading, error }) => {
   const hasActiveFilters = filters.subjects.length || filters.semesters.length || filters.educationFields.length ||
     filters.fileTypes.length || filters.noteTypes.length || filters.ratingAbove4 || filters.mostDownloaded || filters.recentlyAdded || searchQuery;
 
-  // ─── Auth handlers ─────────────────────────────────────────────────────
+  // View Incrementer 
+  const trackView = async (noteId) => {
+      if (!noteId || String(noteId).startsWith('note-')) return;
+      try {
+          await fetch(`${API_URL}/api/notes/${noteId}/view`, { method: 'POST' });
+          // Optimistically update API notes
+          setApiNotes(prev => prev.map(n => n.id === noteId ? { ...n, views_count: (n.views_count || 0) + 1 } : n));
+      } catch (err) {
+          console.warn('View tracking failed', err);
+      }
+  };
+
+  // Rate handler
+  const handleRateNote = async (noteId, ratingValue) => {
+      if (!token) return;
+      try {
+          const res = await fetch(`${API_URL}/api/notes/${noteId}/rate`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+              body: JSON.stringify({ rating: ratingValue }),
+          });
+          if (res.ok) {
+              const data = await res.json();
+              // Optimistically update
+              setApiNotes(prev => prev.map(n => n.id === noteId ? { ...n, rating: data.newAverage } : n));
+              if (previewNote && previewNote.id === noteId) {
+                  setPreviewNote(prev => ({ ...prev, rating: data.newAverage }));
+              }
+          }
+      } catch (err) {
+          console.error('Rating failed', err);
+      }
+  };
+
+  // Download handler
+  const handleDownload = async (note) => {
+    try {
+      if (note.id && !note.id.startsWith('note-')) {
+        fetch(`${API_URL}/api/notes/${note.id}/download`, { method: 'POST' }).catch(() => {});
+        // Optimistic update
+        setApiNotes(prev => prev.map(n => n.id === note.id ? { ...n, downloads_count: (n.downloads_count || 0) + 1 } : n));
+      }
+      if (note.file_url) window.open(note.file_url, '_blank');
+    } catch (err) {
+      console.error('Download error:', err);
+    }
+  };
+
+  // Preview handler
+  const handlePreview = (note) => {
+    setPreviewNote(note);
+    trackView(note.id);
+  };
+  
+  // Open PDF directly
+  const handleOpenPdf = (note) => {
+      trackView(note.id);
+      if (note.file_url) window.open(note.file_url, '_blank');
+  };
+
   const handleLogout = useCallback(() => {
     logout();
     navigate('/login', { replace: true });
@@ -597,10 +823,9 @@ const DashboardPage = ({ notes, inputs, onRefresh, isLoading, error }) => {
     navigate('/login');
   }, [navigate]);
 
-  // ─── Render ────────────────────────────────────────────────────────────
   return (
     <main className="dashboard" aria-label="Notes dashboard">
-      {/* ── Sidebar ── */}
+      {/* Sidebar */}
       <aside className="dashboard__sidebar" aria-label="Filters">
         <div className="sidebar__search">
           <SearchIcon className="sidebar__search-icon" />
@@ -652,9 +877,8 @@ const DashboardPage = ({ notes, inputs, onRefresh, isLoading, error }) => {
         )}
       </aside>
 
-      {/* ── Main Content ── */}
+      {/* Main Content */}
       <div className="dashboard__main">
-        {/* Top bar */}
         <div className="dashboard__topbar">
           <div className="dashboard__topbar-left">
             <SearchBar value={searchQuery} onChange={setSearchQuery} />
@@ -673,7 +897,7 @@ const DashboardPage = ({ notes, inputs, onRefresh, isLoading, error }) => {
           </div>
         </div>
 
-        {/* ── Top Rated Section ── */}
+        {/* Top Rated & Sorting */}
         <div className="section-header">
           <h2 className="section-header__title">Top Rated</h2>
           <SortDropdown value={sortBy} onChange={setSortBy} />
@@ -687,18 +911,20 @@ const DashboardPage = ({ notes, inputs, onRefresh, isLoading, error }) => {
           <EmptyState onReset={clearFilters} />
         ) : (
           <div className="notes-grid">
-            {filteredNotes.slice(0, 6).map(note => (
+            {(!hasActiveFilters && sortBy === 'relevant' ? topRatedNotes : filteredNotes).slice(0, 6).map(note => (
               <NoteCard
                 key={note.id}
                 note={note}
                 bookmarked={bookmarks.includes(note.id)}
                 onToggleBookmark={toggleBookmark}
+                onDownload={handleDownload}
+                onPreview={handlePreview}
               />
             ))}
           </div>
         )}
 
-        {/* ── Trending This Week ── */}
+        {/* Trending */}
         <div className="trending-section">
           <div className="section-header">
             <h2 className="section-header__title">
@@ -712,32 +938,36 @@ const DashboardPage = ({ notes, inputs, onRefresh, isLoading, error }) => {
                 note={note}
                 bookmarked={bookmarks.includes(note.id)}
                 onToggleBookmark={toggleBookmark}
+                onDownload={handleDownload}
+                onPreview={handlePreview}
                 isTrending
               />
             ))}
           </div>
         </div>
 
-        {/* ── Best Suited Section ── */}
-        {filteredNotes.length > 6 && (
+        {/* Best Suited (Hybrid sorted) */}
+        {!hasActiveFilters && sortBy === 'relevant' && filteredNotes.length > 6 && (
           <>
             <div className="section-header">
-              <h2 className="section-header__title">Best Suited</h2>
+              <h2 className="section-header__title">Best Suited (Smart Ranking)</h2>
             </div>
             <div className="notes-grid">
               {filteredNotes.slice(6).map(note => (
                 <NoteCard
-                  key={note.id}
+                  key={`best-${note.id}`}
                   note={note}
                   bookmarked={bookmarks.includes(note.id)}
                   onToggleBookmark={toggleBookmark}
+                  onDownload={handleDownload}
+                  onPreview={handlePreview}
                 />
               ))}
             </div>
           </>
         )}
 
-        {/* ── Saved Notes Section (only if bookmarks exist) ── */}
+        {/* Saved Notes */}
         {bookmarks.length > 0 && (
           <>
             <div className="section-header" style={{ marginTop: 20 }}>
@@ -750,12 +980,25 @@ const DashboardPage = ({ notes, inputs, onRefresh, isLoading, error }) => {
                   note={note}
                   bookmarked
                   onToggleBookmark={toggleBookmark}
+                  onDownload={handleDownload}
+                  onPreview={handlePreview}
                 />
               ))}
             </div>
           </>
         )}
       </div>
+
+      {/* Preview Modal */}
+      <PreviewModal 
+          isOpen={!!previewNote} 
+          onClose={() => setPreviewNote(null)} 
+          note={previewNote} 
+          onDownload={handleDownload}
+          onOpenPdf={handleOpenPdf}
+          onRate={handleRateNote}
+          userToken={token}
+      />
     </main>
   );
 };

@@ -7,6 +7,7 @@ import LoginPage from './components/LoginPage';
 import SignupPage from './components/SignupPage';
 import NotesPage from './components/NotesPage';
 import QuestionnairePage from './components/QuestionnairePage';
+import DashboardPage from './components/DashboardPage';
 import AdminDashboard from './components/AdminDashboard';
 import ContributorDashboard from './components/ContributorDashboard';
 
@@ -40,17 +41,27 @@ function App() {
               }
             />
 
-            {/* Protected: all authenticated users */}
+            {/* User Dashboard — all authenticated users */}
             <Route
-              path="/notes"
+              path="/dashboard"
               element={
                 <ProtectedRoute allowedRoles={['user', 'contributor', 'admin']}>
-                  <NotesPage inputs={profile} />
+                  <DashboardPage inputs={profile} />
                 </ProtectedRoute>
               }
             />
 
-            {/* Protected: admin only */}
+            {/* Legacy notes route — redirect to dashboard */}
+            <Route
+              path="/notes"
+              element={
+                <ProtectedRoute allowedRoles={['user', 'contributor', 'admin']}>
+                  <DashboardPage inputs={profile} />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Contributor Dashboard */}
             <Route
               path="/contributor-dashboard"
               element={
@@ -59,6 +70,8 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
+            {/* Admin Dashboard */}
             <Route
               path="/admin-dashboard"
               element={

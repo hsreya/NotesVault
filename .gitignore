@@ -10,3 +10,4 @@ yarn-error.log*
 build/
 dist/
 .DS_Store
+tmp_notes.json
