@@ -5,6 +5,8 @@ const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
 const supabase = require('./supabase');
+const { Resend } = require('resend');
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me';
 
@@ -390,6 +392,76 @@ router.post('/save-inputs', async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════════════
 //  Contributor Routes (contributor + admin)
 // ═══════════════════════════════════════════════════════════════════════════
+
+// ─── Send Notification (Email all users) ──────────────────────────────────
+router.post('/notes/notify', async (req, res) => {
+  try {
+    const { title, subject, description } = req.body;
+    
+    // 1. Fetch all user emails
+    const { data: users, error } = await supabase.from('users').select('email');
+    if (error) throw error;
+    
+    const emailList = users.map(user => user.email).filter(Boolean);
+    if (!emailList.length) return res.status(200).json({ message: 'No users to notify' });
+
+    console.log(`[EMAIL] Attempting to notify ${emailList.length} users:`, emailList);
+
+    // 2. Send email notification to each user individually
+    //    (Resend free tier with onboarding@resend.dev only allows sending to verified emails)
+    let successCount = 0;
+    let failCount = 0;
+    const errors = [];
+
+    for (const email of emailList) {
+      try {
+        const result = await resend.emails.send({
+          from: 'NotesHub <onboarding@resend.dev>',
+          to: email,
+          subject: '📚 New Study Material Uploaded on NotesHub!',
+          html: `
+            <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
+              <div style="background: linear-gradient(135deg, #3b82f6, #6366f1); padding: 32px 24px; text-align: center;">
+                <h1 style="color: white; margin: 0; font-size: 24px;">📚 New Notes Available!</h1>
+              </div>
+              <div style="padding: 32px 24px;">
+                <p style="color: #374151; font-size: 16px; line-height: 1.6;">Hey there! A contributor just uploaded fresh study material you might find useful.</p>
+                <div style="background: #f8fafc; border-left: 4px solid #3b82f6; padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 20px 0;">
+                  <p style="margin: 0 0 8px 0;"><strong style="color: #1e293b;">Title:</strong> <span style="color: #475569;">${title || 'N/A'}</span></p>
+                  <p style="margin: 0 0 8px 0;"><strong style="color: #1e293b;">Subject:</strong> <span style="color: #475569;">${subject || 'N/A'}</span></p>
+                  ${description ? `<p style="margin: 0;"><strong style="color: #1e293b;">Details:</strong> <span style="color: #475569;">${description}</span></p>` : ''}
+                </div>
+                <div style="text-align: center; margin-top: 28px;">
+                  <a href="http://localhost:3003/dashboard" style="display: inline-block; padding: 12px 32px; background: linear-gradient(135deg, #3b82f6, #6366f1); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">View on NotesHub →</a>
+                </div>
+              </div>
+              <div style="background: #f8fafc; padding: 16px 24px; text-align: center;">
+                <p style="color: #94a3b8; font-size: 12px; margin: 0;">You received this because you have an account on NotesHub.</p>
+              </div>
+            </div>
+          `,
+        });
+        console.log(`[EMAIL] ✅ Sent to ${email}:`, result);
+        successCount++;
+      } catch (emailErr) {
+        console.error(`[EMAIL] ❌ Failed for ${email}:`, emailErr?.message || emailErr);
+        errors.push({ email, error: emailErr?.message });
+        failCount++;
+      }
+    }
+
+    console.log(`[EMAIL] Done: ${successCount} sent, ${failCount} failed`);
+    return res.status(200).json({ 
+      message: `Notified ${successCount} user(s)${failCount > 0 ? `, ${failCount} failed` : ''}`,
+      successCount,
+      failCount,
+      errors: errors.length > 0 ? errors : undefined
+    });
+  } catch (error) {
+    console.error('EMAIL NOTIFY ERROR:', error);
+    return res.status(500).json({ message: 'Error notifying users', error: error.message });
+  }
+});
 
 // ─── Upload a note (with file) ────────────────────────────────────────────
 router.post('/notes/upload', upload.single('file'), async (req, res) => {

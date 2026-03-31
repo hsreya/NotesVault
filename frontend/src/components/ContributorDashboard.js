@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import './DashboardPage.css';
 import './ContributorDashboard.css';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5127';
 
 const SUBJECTS = ['DBMS', 'OS', 'CN', 'DSA', 'Web Dev', 'AI/ML', 'Math', 'Physics', 'Chemistry', 'Digital Logic', 'Computer Architecture', 'Software Engineering'];
 const SEMESTERS = ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6', 'Sem 7', 'Sem 8'];
@@ -187,6 +187,31 @@ const ContributorDashboard = () => {
             if (!res.ok) throw new Error((await res.json()).message || 'Upload failed');
             setUploadProgress(100);
             showNotification('✅ Note published successfully!');
+            
+            // Notify users via email
+            showNotification('📩 Notifying users...');
+            try {
+                const notifyRes = await fetch(`${API_URL}/api/notes/notify`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: formData.title,
+                        subject: formData.subject,
+                        description: formData.description
+                    })
+                });
+                const notifyData = await notifyRes.json();
+                if (notifyRes.ok && notifyData.successCount > 0) {
+                    showNotification(`✅ ${notifyData.message}`);
+                } else {
+                    console.error('Notify response:', notifyData);
+                    showNotification('⚠️ Note published, but email notification failed.', 'error');
+                }
+            } catch (notifyErr) {
+                console.error('Failed to notify users:', notifyErr);
+                showNotification('⚠️ Note published, but user notification failed.', 'error');
+            }
+
             setFormData({ title: '', subject: '', semester: '', category: 'Notes', tags: '', description: '', youtube_url: '', file: null });
             setShowUploadModal(false);
             setTimeout(() => fetchMyUploads(), 500);
