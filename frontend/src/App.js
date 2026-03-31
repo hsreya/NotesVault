@@ -5,7 +5,6 @@ import ProtectedRoute from './components/ProtectedRoute';
 import LandingPage from './components/LandingPage';
 import LoginPage from './components/LoginPage';
 import SignupPage from './components/SignupPage';
-import NotesPage from './components/NotesPage';
 import QuestionnairePage from './components/QuestionnairePage';
 import DashboardPage from './components/DashboardPage';
 import AdminDashboard from './components/AdminDashboard';

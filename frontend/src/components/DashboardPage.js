@@ -569,14 +569,6 @@ const ProfileWidget = ({ user, isAuthenticated, onLogout, onLogin, navigate }) =
   );
 };
 
-// ─── Helper: normalize API note to card format ───────────────────────────────
-const calculateHybridScore = (note) => {
-    const avgRating = note.rating || 0;
-    const downloads = note.downloads_count || 0;
-    const views = note.views_count || 0;
-    // finalScore = (avgRating * 0.6) + (Math.log(downloads + 1) * 0.25) + (Math.log(views + 1) * 0.15)
-    return (avgRating * 0.6) + (Math.log(downloads + 1) * 0.25) + (Math.log(views + 1) * 0.15);
-};
 
 const normalizeNote = (note, index) => {
   const seed = index + 1;
@@ -607,28 +599,6 @@ const normalizeNote = (note, index) => {
   };
 };
 
-const generateMockNotes = () =>
-  Array.from({ length: 9 }, (_, i) => normalizeNote({
-    title: [
-      'DBMS Complete Notes', 'OS Handwritten Summary', 'CN PYQ Solutions',
-      'DSA Key Concepts', 'Web Dev React Guide', 'AI/ML Revision Notes',
-      'Math III Formula Sheet', 'Physics Lab Manual', 'Digital Logic Design'
-    ][i],
-    description: [
-      'Complete database management system notes covering normalization, SQL, transactions, and concurrency control.',
-      'Handwritten operating system notes with process scheduling, memory management, and file systems.',
-      'Previous year question papers for computer networks with detailed solutions and explanations.',
-      'Data structures and algorithms covering arrays, trees, graphs, sorting, and dynamic programming.',
-      'React.js comprehensive guide with hooks, state management, routing, and project structure.',
-      'Artificial intelligence and machine learning revision notes for semester exams.',
-      'Complete formula sheet for Engineering Mathematics III with examples.',
-      'Physics laboratory manual with experiment procedures and observations.',
-      'Digital logic design notes covering Boolean algebra, K-maps, and sequential circuits.'
-    ][i],
-    subject: MOCK_SUBJECTS[i % MOCK_SUBJECTS.length],
-    semester: SEMESTERS[i % SEMESTERS.length],
-    category: ['Notes', 'PYQ', 'Revision', 'Notes', 'Notes', 'Revision', 'Summary', 'Lab Manual', 'Notes'][i],
-  }, i));
 
 // ─── Main Dashboard ──────────────────────────────────────────────────────────
 const DashboardPage = ({ inputs }) => {
