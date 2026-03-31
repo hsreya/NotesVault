@@ -11,6 +11,12 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    /* ── logout ─────────────────────────────────────────────── */
+    const logout = useCallback(() => {
+        setUser(null);
+        localStorage.removeItem(TOKEN_KEY);
+    }, []);
+
     const fetchMe = useCallback(async (token) => {
         try {
             const res = await fetch(`${API_URL}/api/auth/me`, {
@@ -25,7 +31,7 @@ export const AuthProvider = ({ children }) => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [logout]);
 
     // Restore session on mount
     useEffect(() => {
@@ -67,12 +73,6 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem(TOKEN_KEY, data.token);
         setUser(data.user);
         return data.user;
-    }, []);
-
-    /* ── logout ─────────────────────────────────────────────── */
-    const logout = useCallback(() => {
-        setUser(null);
-        localStorage.removeItem(TOKEN_KEY);
     }, []);
 
     /* ── helper functions (optional/deprecated if server handled) */

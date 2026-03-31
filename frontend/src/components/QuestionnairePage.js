@@ -65,9 +65,9 @@ const Navbar = ({ navigate }) => (
                 <h2 className="text-xl font-bold tracking-tight text-primary">NotesFinder</h2>
             </div>
             <nav className="hidden md:flex items-center gap-10">
-                <a className="text-sm font-semibold text-slate-600 hover:text-primary transition-colors" href="#">Find Notes</a>
-                <a className="text-sm font-semibold text-slate-600 hover:text-primary transition-colors" href="#">Upload</a>
-                <a className="text-sm font-semibold text-slate-600 hover:text-primary transition-colors" href="#">Pricing</a>
+                <a className="text-sm font-semibold text-slate-600 hover:text-primary transition-colors" href="/">Find Notes</a>
+                <a className="text-sm font-semibold text-slate-600 hover:text-primary transition-colors" href="/">Upload</a>
+                <a className="text-sm font-semibold text-slate-600 hover:text-primary transition-colors" href="/">Pricing</a>
             </nav>
             <button className="bg-primary text-white text-sm font-bold h-10 px-5 rounded-lg hover:opacity-90 transition-opacity">
                 Get Started Free

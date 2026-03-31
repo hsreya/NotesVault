@@ -38,13 +38,13 @@ const LandingPage = () => {
             <h2 className="text-xl font-bold tracking-tight text-primary">NotesFinder</h2>
           </div>
           <nav className="hidden md:flex items-center gap-10">
-            <a className="text-sm font-semibold text-slate-600 hover:text-primary transition-colors" href="#">
+            <a className="text-sm font-semibold text-slate-600 hover:text-primary transition-colors" href="/">
               Find Notes
             </a>
-            <a className="text-sm font-semibold text-slate-600 hover:text-primary transition-colors" href="#">
+            <a className="text-sm font-semibold text-slate-600 hover:text-primary transition-colors" href="/">
               Upload
             </a>
-            <a className="text-sm font-semibold text-slate-600 hover:text-primary transition-colors" href="#">
+            <a className="text-sm font-semibold text-slate-600 hover:text-primary transition-colors" href="/">
               Pricing
             </a>
           </nav>
@@ -601,10 +601,10 @@ const LandingPage = () => {
               The premium destination for students to share, find, and master their course materials with AI-powered tools.
             </p>
             <div className="flex gap-4">
-              <a className="size-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-primary hover:text-white transition-all" href="#">
+              <a className="size-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-primary hover:text-white transition-all" href="/">
                 <span className="material-symbols-outlined text-[20px]">share</span>
               </a>
-              <a className="size-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-primary hover:text-white transition-all" href="#">
+              <a className="size-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-primary hover:text-white transition-all" href="/">
                 <span className="material-symbols-outlined text-[20px]">public</span>
               </a>
             </div>
@@ -612,36 +612,36 @@ const LandingPage = () => {
           <div>
             <h5 className="font-bold text-primary mb-6">Product</h5>
             <ul className="space-y-4 text-sm font-medium text-slate-500">
-              <li><a className="hover:text-primary transition-colors" href="#">Search</a></li>
-              <li><a className="hover:text-primary transition-colors" href="#">Study Circles</a></li>
-              <li><a className="hover:text-primary transition-colors" href="#">AI Scan</a></li>
-              <li><a className="hover:text-primary transition-colors" href="#">Marketplace</a></li>
+              <li><a className="hover:text-primary transition-colors" href="/">Search</a></li>
+              <li><a className="hover:text-primary transition-colors" href="/">Study Circles</a></li>
+              <li><a className="hover:text-primary transition-colors" href="/">AI Scan</a></li>
+              <li><a className="hover:text-primary transition-colors" href="/">Marketplace</a></li>
             </ul>
           </div>
           <div>
             <h5 className="font-bold text-primary mb-6">Company</h5>
             <ul className="space-y-4 text-sm font-medium text-slate-500">
-              <li><a className="hover:text-primary transition-colors" href="#">About Us</a></li>
-              <li><a className="hover:text-primary transition-colors" href="#">Careers</a></li>
-              <li><a className="hover:text-primary transition-colors" href="#">Blog</a></li>
-              <li><a className="hover:text-primary transition-colors" href="#">Privacy</a></li>
+              <li><a className="hover:text-primary transition-colors" href="/">About Us</a></li>
+              <li><a className="hover:text-primary transition-colors" href="/">Careers</a></li>
+              <li><a className="hover:text-primary transition-colors" href="/">Blog</a></li>
+              <li><a className="hover:text-primary transition-colors" href="/">Privacy</a></li>
             </ul>
           </div>
           <div>
             <h5 className="font-bold text-primary mb-6">Support</h5>
             <ul className="space-y-4 text-sm font-medium text-slate-500">
-              <li><a className="hover:text-primary transition-colors" href="#">Help Center</a></li>
-              <li><a className="hover:text-primary transition-colors" href="#">Guidelines</a></li>
-              <li><a className="hover:text-primary transition-colors" href="#">Terms</a></li>
+              <li><a className="hover:text-primary transition-colors" href="/">Help Center</a></li>
+              <li><a className="hover:text-primary transition-colors" href="/">Guidelines</a></li>
+              <li><a className="hover:text-primary transition-colors" href="/">Terms</a></li>
             </ul>
           </div>
         </div>
         <div className="max-w-[1200px] mx-auto mt-20 pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center text-xs font-semibold text-slate-400 gap-4">
           <p>© 2024 NotesFinder Inc. Built for students, by students.</p>
           <div className="flex gap-8">
-            <a className="hover:text-primary" href="#">Status</a>
-            <a className="hover:text-primary" href="#">Cookie Policy</a>
-            <a className="hover:text-primary" href="#">Security</a>
+            <a className="hover:text-primary" href="/">Status</a>
+            <a className="hover:text-primary" href="/">Cookie Policy</a>
+            <a className="hover:text-primary" href="/">Security</a>
           </div>
         </div>
       </footer>

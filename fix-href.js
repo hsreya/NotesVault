@@ -1,0 +1,1 @@
+const fs=require('fs');const path=require('path');function walk(dir){fs.readdirSync(dir).forEach(f=>{let dirPath=path.join(dir,f);if(fs.statSync(dirPath).isDirectory())walk(dirPath);else if(dirPath.endsWith('.js')){let content=fs.readFileSync(dirPath,'utf8');if(content.includes('href=\
