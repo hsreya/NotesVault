@@ -5,8 +5,16 @@ const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
 const supabase = require('./supabase');
-const { Resend } = require('resend');
-const resend = new Resend(process.env.RESEND_API_KEY);
+const nodemailer = require('nodemailer');
+
+// Gmail SMTP transporter
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me';
 
@@ -415,8 +423,8 @@ router.post('/notes/notify', async (req, res) => {
 
     for (const email of emailList) {
       try {
-        const result = await resend.emails.send({
-          from: 'NotesHub <onboarding@resend.dev>',
+        const result = await transporter.sendMail({
+          from: `NotesHub <${process.env.EMAIL_USER}>`,
           to: email,
           subject: '📚 New Study Material Uploaded on NotesHub!',
           html: `
@@ -441,7 +449,7 @@ router.post('/notes/notify', async (req, res) => {
             </div>
           `,
         });
-        console.log(`[EMAIL] ✅ Sent to ${email}:`, result);
+        console.log(`[EMAIL] ✅ Sent to ${email}:`, result.messageId);
         successCount++;
       } catch (emailErr) {
         console.error(`[EMAIL] ❌ Failed for ${email}:`, emailErr?.message || emailErr);
