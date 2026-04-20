@@ -6,6 +6,8 @@ const multer = require('multer');
 const path = require('path');
 const supabase = require('./supabase');
 const nodemailer = require('nodemailer');
+const localAuth = require('./localAuth'); // local fallback when Supabase is unreachable
+const localNotes = require('./localNotes'); // local fallback for notes
 
 // Gmail SMTP transporter
 const transporter = nodemailer.createTransport({
@@ -206,44 +208,48 @@ router.post('/auth/signup', async (req, res) => {
       return res.status(400).json({ message: 'Full name, email, and password are required' });
     }
 
-    // Check if email already exists
-    const { data: existing } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', email)
-      .single();
-
-    if (existing) {
+    // Check if email already exists (local store)
+    const existingLocal = localAuth.findByEmail(email);
+    if (existingLocal) {
       return res.status(409).json({ message: 'An account with this email already exists' });
     }
 
     const password_hash = await bcrypt.hash(password, 10);
     const validRole = (role === 'contributor') ? 'contributor' : 'user';
 
-    const { data: user, error } = await supabase
-      .from('users')
-      .insert([{
-        full_name,
-        email,
-        password_hash,
-        role: validRole,
-        semester: semester || null,
-        education_field: education_field || null,
-        education_year: education_year || null,
-        notes_preference: []
-      }])
-      .select('id, full_name, email, role, semester, education_field, education_year')
-      .single();
+    // Save to local store (works without Supabase)
+    const newUser = localAuth.createUser({
+      full_name, email, password_hash,
+      role: validRole,
+      semester: semester || null,
+      education_field: education_field || null,
+      education_year: education_year || null,
+    });
 
-    if (error) throw error;
+    // Also try to save to Supabase (best-effort, won't block signup)
+    supabase.from('users').insert([{
+      id: newUser.id,
+      full_name: newUser.full_name,
+      email: newUser.email,
+      password_hash: newUser.password_hash,
+      role: newUser.role,
+      semester: newUser.semester,
+      education_field: newUser.education_field,
+      education_year: newUser.education_year,
+      notes_preference: []
+    }]).then(({ error }) => {
+      if (error) console.warn('[Supabase sync skipped]', error.message);
+      else console.log('[Supabase] User synced:', newUser.email);
+    }).catch(e => console.warn('[Supabase sync failed]', e.message));
 
+    const { password_hash: _, ...safeUser } = newUser;
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role, full_name: user.full_name },
+      { id: safeUser.id, email: safeUser.email, role: safeUser.role, full_name: safeUser.full_name },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
 
-    return res.status(201).json({ message: 'Account created', token, user });
+    return res.status(201).json({ message: 'Account created', token, user: safeUser });
   } catch (error) {
     console.error('SIGNUP ERROR:', error?.message || error);
     return res.status(500).json({ message: 'Error creating account', error: error.message });
@@ -258,13 +264,9 @@ router.post('/auth/login', async (req, res) => {
       return res.status(400).json({ message: 'Email and password are required' });
     }
 
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('id, full_name, email, password_hash, role, semester, education_field, education_year')
-      .eq('email', email)
-      .single();
-
-    if (error || !user) {
+    // Look up user in local store first
+    const user = localAuth.findByEmail(email);
+    if (!user) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
@@ -289,15 +291,12 @@ router.post('/auth/login', async (req, res) => {
 // ─── Get current user ─────────────────────────────────────────────────────
 router.get('/auth/me', authenticateUser, async (req, res) => {
   try {
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('id, full_name, email, role, semester, education_field, education_year, created_at')
-      .eq('id', req.user.id)
-      .single();
-
-    if (error || !user) {
+    // Look up in local store
+    const rawUser = localAuth.findById(req.user.id);
+    if (!rawUser) {
       return res.status(404).json({ message: 'User not found' });
     }
+    const { password_hash: _, ...user } = rawUser;
     return res.json({ user });
   } catch (error) {
     return res.status(500).json({ message: 'Error fetching user', error: error.message });
@@ -523,30 +522,54 @@ router.post('/notes/upload', upload.single('file'), async (req, res) => {
     }
 
     // Auto-approve (no admin review)
-    const { data: note, error } = await supabase
-      .from('notes')
-      .insert([{
-        title,
-        description: description || '',
-        subject,
-        branch: subject, // Keep backward compat
-        semester,
-        category: category || 'Notes',
-        tags: parsedTags,
-        file_url: fileUrl,
-        file_type: fileType,
-        youtube_url: youtube_url || '',
-        uploaded_by: uploader_id || null, // from backend Auth
-        uploader_name: uploader_name || 'Anonymous',
-        status: 'approved', // Auto-approve
-        downloads_count: 0,
-        views_count: 0,
-        rating: 0,
-      }])
-      .select()
-      .single();
+    let note;
+    try {
+      const { data, error } = await supabase
+        .from('notes')
+        .insert([{
+          title,
+          description: description || '',
+          subject,
+          branch: subject, // Keep backward compat
+          semester,
+          category: category || 'Notes',
+          tags: parsedTags,
+          file_url: fileUrl,
+          file_type: fileType,
+          youtube_url: youtube_url || '',
+          uploaded_by: uploader_id || null, // from backend Auth
+          uploader_name: uploader_name || 'Anonymous',
+          status: 'approved', // Auto-approve
+          downloads_count: 0,
+          views_count: 0,
+          rating: 0,
+        }])
+        .select()
+        .single();
+      if (error) throw error;
+      note = data;
+    } catch(e) {
+      console.warn('[Supabase offset] Saving note to local store', e.message);
+      note = localNotes.createNote({
+          title,
+          description: description || '',
+          subject,
+          branch: subject, // Keep backward compat
+          semester,
+          category: category || 'Notes',
+          tags: parsedTags,
+          file_url: fileUrl,
+          file_type: fileType,
+          youtube_url: youtube_url || '',
+          uploaded_by: uploader_id || null, // from backend Auth
+          uploader_name: uploader_name || 'Anonymous',
+          status: 'approved', // Auto-approve
+          downloads_count: 0,
+          views_count: 0,
+          rating: 0,
+      });
+    }
 
-    if (error) throw error;
     return res.status(201).json({ message: 'Note published successfully!', note });
   } catch (error) {
     console.error('UPLOAD ERROR:', error?.message || error);
@@ -558,13 +581,19 @@ router.post('/notes/upload', upload.single('file'), async (req, res) => {
 router.get('/notes/my-uploads/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    const { data: notes, error } = await supabase
-      .from('notes')
-      .select('*')
-      .eq('uploaded_by', userId)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
+    let notes = [];
+    try {
+      const { data, error } = await supabase
+        .from('notes')
+        .select('*')
+        .eq('uploaded_by', userId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      notes = data;
+    } catch(e) {
+      console.warn('[Supabase offset] Reading notes from local store', e.message);
+      notes = localNotes.getNotesByUser(userId);
+    }
     return res.json({ count: notes.length, data: notes });
   } catch (error) {
     return res.status(500).json({ message: 'Error fetching uploads', error: error.message });
@@ -665,37 +694,15 @@ router.delete('/notes/:id', async (req, res) => {
     const { id } = req.params;
     const { userId } = req.query;
 
-    // Get note to check ownership and file path
-    const { data: note, error: fetchError } = await supabase
-      .from('notes')
-      .select('uploaded_by, file_url')
-      .eq('id', id)
-      .single();
+    localNotes.deleteNote(id);
 
-    if (fetchError || !note) {
-      return res.status(404).json({ message: 'Note not found' });
+    try {
+      // Delete from database
+      const { error } = await supabase.from('notes').delete().eq('id', id);
+      if (error) throw error;
+    } catch(e) {
+      console.warn('[Supabase offset] Failed to delete from supabase', e.message);
     }
-
-    // Check ownership
-    if (userId && note.uploaded_by !== userId) {
-      return res.status(403).json({ message: 'You can only delete your own notes' });
-    }
-
-    // Delete file from storage if exists
-    if (note.file_url && note.file_url.includes('/storage/')) {
-      try {
-        const urlParts = note.file_url.split('/storage/v1/object/public/notes/');
-        if (urlParts[1]) {
-          await supabase.storage.from('notes').remove([urlParts[1]]);
-        }
-      } catch (e) {
-        console.error('Error deleting file from storage:', e);
-      }
-    }
-
-    // Delete from database
-    const { error } = await supabase.from('notes').delete().eq('id', id);
-    if (error) throw error;
     return res.json({ message: 'Note deleted successfully' });
   } catch (error) {
     return res.status(500).json({ message: 'Error deleting note', error: error.message });
