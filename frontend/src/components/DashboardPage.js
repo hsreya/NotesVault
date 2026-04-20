@@ -487,6 +487,7 @@ const SearchBar = ({ value, onChange }) => {
           onFocus={() => setFocused(true)}
           onKeyDown={handleKeyDown}
         />
+        <span className="search-bar__ai-badge">AI</span>
       </div>
       {showSuggestions && (
         <div className="search-bar__suggestions">
@@ -603,7 +604,6 @@ const normalizeNote = (note, index) => {
 const DashboardPage = ({ inputs }) => {
   const { user, isAuthenticated, logout, token } = useAuth();
   const navigate = useNavigate();
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [bookmarks, setBookmarks] = useState(() => {
     try { return JSON.parse(localStorage.getItem('noteBookmarks')) || []; } catch { return []; }
   });
@@ -795,30 +795,11 @@ const DashboardPage = ({ inputs }) => {
   }, [navigate]);
 
   return (
-    <div className="dashboard-container">
-      {/* Mobile Header */}
-      <div className="mobile-header">
-        <div className="mobile-header__logo">NotesFinder</div>
-        <button className="mobile-header__btn" onClick={() => setIsMobileSidebarOpen(true)}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="3" y1="12" x2="21" y2="12"></line>
-            <line x1="3" y1="6" x2="21" y2="6"></line>
-            <line x1="3" y1="18" x2="21" y2="18"></line>
-          </svg>
-        </button>
-      </div>
-
-      {/* Sidebar Overlay */}
-      <div 
-        className={`sidebar-overlay ${isMobileSidebarOpen ? 'sidebar-overlay--active' : ''}`}
-        onClick={() => setIsMobileSidebarOpen(false)}
-      />
-
-      <main className="dashboard" aria-label="Notes dashboard">
-        {/* Sidebar */}
-        <aside className={`dashboard__sidebar ${isMobileSidebarOpen ? 'dashboard__sidebar--open' : ''}`} aria-label="Filters">
-          <div className="sidebar__search">
-            <SearchIcon className="sidebar__search-icon" />
+    <main className="dashboard" aria-label="Notes dashboard">
+      {/* Sidebar */}
+      <aside className="dashboard__sidebar" aria-label="Filters">
+        <div className="sidebar__search">
+          <SearchIcon className="sidebar__search-icon" />
           <input className="sidebar__search-input" placeholder="Filter..." />
         </div>
 
@@ -991,10 +972,8 @@ const DashboardPage = ({ inputs }) => {
       />
 
       {/* Chatbot */}
-      </main>
-      
       <Chatbot allNotes={allNotes} />
-    </div>
+    </main>
   );
 };
 

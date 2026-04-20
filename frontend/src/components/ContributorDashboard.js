@@ -71,9 +71,8 @@ const DashboardIcon = (props) => (
 
 // ─── Component ────────────────────────────────────────────────────────
 const ContributorDashboard = () => {
-    const { user, isAuthenticated, logout, token } = useAuth();
+    const { user, logout } = useAuth();
     const navigate = useNavigate();
-    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const fileInputRef = useRef(null);
 
     const [stats, setStats] = useState({
@@ -236,38 +235,19 @@ const ContributorDashboard = () => {
     };
 
     return (
-        <div className="dashboard-container">
+        <div className="dashboard">
             {notification && (
                 <div className={`cd-notification cd-notification--${notification.type}`}>
                     {notification.message}
                 </div>
             )}
 
-            {/* Mobile Header */}
-            <div className="mobile-header">
-                <div className="mobile-header__logo">NotesFinder</div>
-                <button className="mobile-header__btn" onClick={() => setIsMobileSidebarOpen(true)}>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="3" y1="12" x2="21" y2="12"></line>
-                        <line x1="3" y1="6" x2="21" y2="6"></line>
-                        <line x1="3" y1="18" x2="21" y2="18"></line>
-                    </svg>
-                </button>
-            </div>
-
-            {/* Sidebar Overlay */}
-            <div 
-                className={`sidebar-overlay ${isMobileSidebarOpen ? 'sidebar-overlay--active' : ''}`}
-                onClick={() => setIsMobileSidebarOpen(false)}
-            />
-
-            <div className="dashboard">
-                {/* Sidebar matches DashboardPage exactly */}
-                <aside className={`dashboard__sidebar ${isMobileSidebarOpen ? 'dashboard__sidebar--open' : ''}`}>
-                    <div className="sidebar__menu">
-                        <div className="sidebar__menu-label">CONTRIBUTOR</div>
-                        <button className="sidebar__menu-item sidebar__menu-item--active">
-                            <UploadIcon style={{ width: 18, height: 18 }} />
+            {/* Sidebar matches DashboardPage exactly */}
+            <aside className="dashboard__sidebar">
+                <div className="sidebar__menu">
+                    <div className="sidebar__menu-label">CONTRIBUTOR</div>
+                    <button className="sidebar__menu-item sidebar__menu-item--active">
+                        <UploadIcon style={{ width: 18, height: 18 }} />
                         <span>My Uploads</span>
                     </button>
                     <button className="sidebar__menu-item" onClick={() => navigate('/dashboard')}>
@@ -388,8 +368,7 @@ const ContributorDashboard = () => {
                         )}
                     </div>
                 </div>
-                </main>
-            </div>
+            </main>
 
             {/* Upload Modal (Shadcn style matches Preview Modal) */}
             {showUploadModal && (
