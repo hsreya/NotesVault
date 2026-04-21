@@ -1,0 +1,28 @@
+{
+  "users": [
+    {
+      "id": "6c89e7d1-54f4-4bd9-8bad-f61ee92012c9",
+      "full_name": "Test Run",
+      "email": "testrun@test.com",
+      "password_hash": "$2a$10$Wva8E8Y77xYDrZ/nGiPNH.LNSmDi9ICKlx4fzcBKJYmXwBOKW0sDO",
+      "role": "user",
+      "semester": "Sem 6",
+      "education_field": "Computer Engineering",
+      "education_year": null,
+      "notes_preference": [],
+      "created_at": "2026-04-20T17:09:02.494Z"
+    },
+    {
+      "id": "692142f8-0292-4b5c-bc69-75b71c3982eb",
+      "full_name": "harry",
+      "email": "harry@gmail.com",
+      "password_hash": "$2a$10$QSOQD7z88BTtvy0mDlSMgufQQdL2ZjgOLpUKTZ9IIMHf0VMC.bQTm",
+      "role": "contributor",
+      "semester": "Sem 6",
+      "education_field": "IT",
+      "education_year": null,
+      "notes_preference": [],
+      "created_at": "2026-04-20T17:17:00.147Z"
+    }
+  ]
+}

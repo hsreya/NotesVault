@@ -22,7 +22,7 @@ const LoginPage = () => {
             } else if (user.role === 'contributor') {
                 navigate('/contributor-dashboard', { replace: true });
             } else {
-                navigate('/questionnaire', { replace: true });
+                navigate('/dashboard', { replace: true });
             }
         } catch (err) {
             console.error('Login error:', err);

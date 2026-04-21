@@ -487,7 +487,6 @@ const SearchBar = ({ value, onChange }) => {
           onFocus={() => setFocused(true)}
           onKeyDown={handleKeyDown}
         />
-        <span className="search-bar__ai-badge">AI</span>
       </div>
       {showSuggestions && (
         <div className="search-bar__suggestions">

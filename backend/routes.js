@@ -264,8 +264,23 @@ router.post('/auth/login', async (req, res) => {
       return res.status(400).json({ message: 'Email and password are required' });
     }
 
-    // Look up user in local store first
-    const user = localAuth.findByEmail(email);
+    let user;
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, full_name, email, password_hash, role, semester, education_field, education_year')
+        .eq('email', email)
+        .single();
+      
+      if (error || !data) {
+        throw new Error('User not found in Supabase or offline');
+      }
+      user = data;
+    } catch (e) {
+      console.warn('[Supabase Fallback] Login error or offline, checking local auth:', e.message);
+      user = localAuth.findByEmail(email);
+    }
+
     if (!user) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
@@ -291,12 +306,23 @@ router.post('/auth/login', async (req, res) => {
 // ─── Get current user ─────────────────────────────────────────────────────
 router.get('/auth/me', authenticateUser, async (req, res) => {
   try {
-    // Look up in local store
-    const rawUser = localAuth.findById(req.user.id);
-    if (!rawUser) {
-      return res.status(404).json({ message: 'User not found' });
+    let user;
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, full_name, email, role, semester, education_field, education_year, created_at')
+        .eq('id', req.user.id)
+        .single();
+      if (error || !data) throw new Error('Not found in supabase');
+      user = data;
+    } catch (e) {
+      const rawUser = localAuth.findById(req.user.id);
+      if (!rawUser) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      const { password_hash: _, ...safeUser } = rawUser;
+      user = safeUser;
     }
-    const { password_hash: _, ...user } = rawUser;
     return res.json({ user });
   } catch (error) {
     return res.status(500).json({ message: 'Error fetching user', error: error.message });
